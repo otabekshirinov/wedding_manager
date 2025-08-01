@@ -1,0 +1,6 @@
+Flask
+Flask-SQLAlchemy
+Flask-Migrate
+qrcode
+Pillow        # зависимость для qrcode
+fpdf          # для генерации PDF-приглашений
