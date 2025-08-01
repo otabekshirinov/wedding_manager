@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}Задачи для {{ wedding.name }}{% endblock %}
+
+{% block content %}
+<h2 class="text-2xl font-bold mb-4">Задачи для "{{ wedding.name }}"</h2>
+
+<form method="POST" action="{{ url_for('tasks_bp.add_task', wedding_id=wedding.id) }}" class="flex gap-3 mb-6">
+    <input type="text" name="description" placeholder="Введите задачу" required class="border rounded px-3 py-2 w-full">
+    <button type="submit" class="bg-green-600 text-white px-5 py-2 rounded">+</button>
+</form>
+
+<ul class="space-y-3">
+    {% for task in wedding.tasks %}
+    <li class="flex items-center bg-white shadow rounded px-4 py-2">
+        <form method="POST" action="{{ url_for('tasks_bp.toggle_done', wedding_id=wedding.id, task_id=task.id) }}">
+            <button type="submit" class="mr-3">
+                {% if task.is_done %}
+                  <span class="text-green-500 text-xl">✔</span>
+                {% else %}
+                  <span class="text-gray-400 text-xl">◻</span>
+                {% endif %}
+            </button>
+        </form>
+        <span class="flex-1 {% if task.is_done %}line-through text-gray-400{% endif %}">{{ task.description }}</span>
+        <form method="POST" action="{{ url_for('tasks_bp.delete_task', wedding_id=wedding.id, task_id=task.id) }}">
+            <button type="submit" class="text-red-500 hover:text-red-700 ml-3" title="Удалить">🗑️</button>
+        </form>
+    </li>
+    {% endfor %}
+</ul>
+
+{% if not wedding.tasks %}
+    <div class="text-gray-500 mt-8 text-center">Пока задач нет. Добавьте первую!</div>
+{% endif %}
+
+<div class="mt-6 text-sm text-gray-700">
+    Выполнено: <span class="font-semibold">{{ wedding.tasks|selectattr('is_done')|list|length }}</span> / <span class="font-semibold">{{ wedding.tasks|length }}</span>
+</div>
+{% endblock %}

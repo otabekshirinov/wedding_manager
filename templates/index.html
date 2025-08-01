@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+
+{% block title %}Список свадеб{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+  <form action="{{ url_for('create_wedding') }}" method="POST" class="flex flex-col gap-4 sm:flex-row sm:items-end">
+    <div class="w-full sm:w-auto flex-1">
+      <label class="block mb-1 font-medium text-pink-700">Название свадьбы:</label>
+      <input
+        type="text"
+        name="name"
+        required
+        class="px-3 py-2 border rounded-xl w-full focus:ring-2 focus:ring-pink-300 transition"
+        placeholder="например, Свадьба Отабека и Маржоны">
+    </div>
+    <div class="w-full sm:w-auto flex-1">
+      <label class="block mb-1 font-medium text-pink-700">Дата:</label>
+      <input
+        type="date"
+        name="date"
+        class="px-3 py-2 border rounded-xl w-full focus:ring-2 focus:ring-pink-300 transition">
+    </div>
+    <div>
+      <button
+        type="submit"
+        class="bg-pink-600 hover:bg-pink-700 text-white font-semibold px-5 py-2 rounded-xl shadow transition flex items-center gap-2 text-base"
+      >
+        <span class="text-xl">💍</span>
+        <span>Добавить</span>
+      </button>
+    </div>
+  </form>
+</div>
+
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+  {% for wedding in weddings %}
+    <div class="wedding-card group relative p-5 rounded-2xl shadow-md hover:shadow-xl transition-all duration-200 overflow-hidden border flex flex-col">
+      <!-- Иконка задач (слева сверху) -->
+      <a href="{{ url_for('tasks_bp.task_list', wedding_id=wedding.id) }}"
+         class="absolute -left-3 -top-3 z-10 w-11 h-11 flex items-center justify-center rounded-full bg-pink-100 hover:bg-pink-200 text-pink-600 hover:text-white shadow-lg border-2 border-white
+                transition hover:scale-110"
+         style="box-shadow: 0 3px 12px 0 #fbcfe880"
+         title="Задачи этой свадьбы"
+         onclick="event.stopPropagation();">
+        <span class="text-2xl">📋</span>
+      </a>
+      <!-- Иконка финансов (справа сверху) -->
+      <a href="{{ url_for('finance_bp.page_finance', wedding_id=wedding.id) }}"
+         class="absolute -right-3 -top-3 z-10 w-11 h-11 flex items-center justify-center rounded-full bg-green-100 hover:bg-green-200 text-green-600 hover:text-white shadow-lg border-2 border-white
+                transition hover:scale-110"
+         style="box-shadow: 0 3px 12px 0 #bbf7d080"
+         title="Финансы этой свадьбы"
+         onclick="event.stopPropagation();">
+        <span class="text-2xl">💰</span>
+      </a>
+      <!-- Фоновая эмодзи -->
+      <div class="absolute right-3 top-3 opacity-20 group-hover:opacity-40 text-5xl pointer-events-none select-none transition">
+        💒
+      </div>
+      <!-- Название и инфо -->
+      <a href="{{ url_for('view_wedding', wedding_id=wedding.id) }}" class="block z-10 pt-2">
+        <div class="text-2xl font-extrabold text-pink-800 group-hover:text-pink-600 mb-1 group-hover:underline transition flex items-center gap-2">
+          {{ wedding.name }}
+        </div>
+        {% if wedding.date %}
+          <div class="text-gray-500 text-sm mb-1 flex items-center gap-1">
+            <svg class="inline w-4 h-4 text-pink-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3M16 7V3M3 11h18M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+            {{ wedding.date.strftime('%d.%m.%Y') }}
+          </div>
+        {% endif %}
+        <div class="mt-2 text-xs text-gray-400">
+          Нажмите для просмотра гостей и расходов
+        </div>
+      </a>
+    </div>
+  {% else %}
+    <p class="text-gray-600 text-center col-span-full py-12 text-lg">
+      Свадеб пока нет. Добавьте первую выше 👆
+    </p>
+  {% endfor %}
+</div>
+{% endblock %}

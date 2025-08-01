@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Приглашение на свадьбу — {{ wedding.name }}</title>
+  <style>
+    body {
+      font-family: 'Montserrat', 'Arial', sans-serif;
+      background: linear-gradient(120deg, #fff7fb 0%, #ffe0ec 100%);
+      color: #34203a;
+      margin: 0;
+      padding: 0;
+    }
+    .invite-card {
+      width: 590px;
+      min-height: 370px;
+      border-radius: 32px;
+      background: #fffdfa;
+      box-shadow: 0 8px 60px #ffb7df33;
+      border: 2px solid #f9e6f5;
+      margin: 36px auto;
+      padding: 36px 36px 20px 36px;
+      text-align: center;
+      position: relative;
+    }
+    .invite-title {
+      font-size: 2.4em;
+      color: #e12a77;
+      font-family: 'Montserrat', 'Arial', sans-serif;
+      letter-spacing: 0.04em;
+      font-weight: 800;
+      text-shadow: 0 1px 10px #ffbde855, 0 0px 2px #fff;
+    }
+    .invite-sub {
+      font-size: 1.2em;
+      margin: 18px 0 30px 0;
+      color: #8364b4;
+      font-weight: 500;
+    }
+    .guest-name {
+      font-size: 1.35em;
+      color: #a142ba;
+      font-weight: bold;
+      margin: 14px 0 18px 0;
+    }
+    .main-info {
+      font-size: 1.16em;
+      color: #3a233b;
+      margin: 0 0 18px 0;
+      font-weight: 500;
+    }
+    .qr-area {
+      position: absolute;
+      right: 35px;
+      bottom: 30px;
+      background: #fff6;
+      padding: 8px;
+      border-radius: 15px;
+      border: 1.5px solid #f9e6f5;
+      box-shadow: 0 3px 18px #ebc7ef44;
+    }
+    .wedding-date {
+      display: inline-block;
+      padding: 4px 20px;
+      margin: 0 0 18px 0;
+      border-radius: 16px;
+      background: linear-gradient(90deg, #e0d6fc, #fff9e9 80%);
+      font-size: 1.1em;
+      color: #633cbe;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    .restaurant {
+      color: #d72c8e;
+      font-weight: 600;
+      font-size: 1.09em;
+      margin-bottom: 22px;
+    }
+    .invite-footer {
+      margin-top: 38px;
+      color: #7b4ba0;
+      font-style: italic;
+      font-size: 1.09em;
+      letter-spacing: 0.01em;
+    }
+  </style>
+</head>
+<body>
+  <div class="invite-card">
+    <div class="invite-title">ПРИГЛАШЕНИЕ НА СВАДЬБУ</div>
+    <div class="invite-sub">
+      Вы приглашены на праздник,<br>
+      посвящённый созданию новой семьи!
+    </div>
+    <div class="guest-name">Дорогой(ая) {{ guest.name }}!</div>
+    <div class="main-info">
+      С радостью ждём Вас на свадьбе:<br>
+      <b>{{ wedding.name }}</b>
+    </div>
+    <div class="wedding-date">
+      {{ wedding.date.strftime('%d.%m.%Y') }}
+    </div>
+    <div class="restaurant">
+      Ресторан <b>«Мумтоз»</b>
+    </div>
+    <div class="invite-footer">
+      По этому QR вы сможете пройти на праздник
+    </div>
+    <div class="qr-area">
+      <img src="{{ qr_code_url }}" width="92" height="92">
+    </div>
+  </div>
+</body>
+</html>

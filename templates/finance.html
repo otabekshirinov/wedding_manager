@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Финансы — {{ wedding.name }}{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('view_wedding', wedding_id=wedding.id) }}" class="text-indigo-600 underline mb-4 inline-block">← К свадьбе</a>
+<h2 class="text-2xl font-bold mb-4">Финансы для: <span class="text-pink-600">{{ wedding.name }}</span></h2>
+
+<div class="grid md:grid-cols-3 gap-6 mb-8">
+  <!-- Бюджет -->
+  <div class="bg-white p-4 rounded-2xl shadow flex flex-col gap-3">
+    <form method="POST" action="{{ url_for('finance_bp.update_budget', wedding_id=wedding.id) }}">
+      <label class="block font-bold mb-2">Бюджет свадьбы (сум):</label>
+      <input type="number" step="0.01" min="0" name="budget" value="{{ wedding.budget or '' }}"
+             class="border px-2 py-1 rounded w-full mb-2" placeholder="Введите бюджет">
+      <button type="submit" class="bg-pink-600 text-white rounded px-3 py-1 text-sm">Сохранить</button>
+    </form>
+    <div class="mt-2 text-sm">
+      <span>Всего потрачено: <b>{{ total_expenses|int }} сум</b></span><br>
+      <span>Осталось: <b>{{ (wedding.budget or 0) - total_expenses|int }} сум</b></span>
+    </div>
+  </div>
+
+  <!-- Pie Chart -->
+  <div class="bg-white p-4 rounded-2xl shadow flex flex-col items-center justify-center">
+    <div class="font-bold mb-2">Распределение расходов</div>
+    <canvas id="expenseChart" width="220" height="220"></canvas>
+    {% if not expense_categories %}
+      <div class="text-gray-400 text-xs mt-2">Нет расходов для графика</div>
+    {% endif %}
+  </div>
+
+  <!-- Спонсоры -->
+  <div class="bg-white p-4 rounded-2xl shadow">
+    <form method="POST" action="{{ url_for('finance_bp.add_sponsor', wedding_id=wedding.id) }}" class="mb-2 flex gap-2">
+      <select name="guest_id" required class="border px-2 py-1 rounded w-full">
+        <option value="">Выберите гостя</option>
+        {% for guest in guests %}
+          <option value="{{ guest.id }}">{{ guest.name }}</option>
+        {% endfor %}
+      </select>
+      <input name="amount" type="number" step="0.01" placeholder="Сумма" required class="border px-2 py-1 rounded w-28">
+      <input name="notes" placeholder="Подарок/примечание" class="border px-2 py-1 rounded w-full">
+      <button type="submit" class="bg-pink-600 text-white rounded px-3 py-1">+</button>
+    </form>
+    <div>
+      <div class="font-bold mb-1">Спонсоры и подарки:</div>
+      {% for s in sponsors %}
+        <form method="POST" action="{{ url_for('finance_bp.delete_sponsor', wedding_id=wedding.id, sponsor_id=s.id) }}" class="flex items-center gap-1 text-sm mb-1">
+          <span class="font-semibold">{{ s.guest.name if s.guest else "—" }}</span>
+          <span class="ml-2 text-pink-700">+{{ s.amount|int }} сум</span>
+          <span class="ml-1 text-gray-500">{{ s.notes }}</span>
+          <button type="submit" class="ml-2 text-red-500 hover:text-red-700" title="Удалить">&times;</button>
+        </form>
+      {% else %}
+        <div class="text-gray-400 text-sm">Нет данных</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- Pie Chart script -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const ctx = document.getElementById('expenseChart').getContext('2d');
+const chart = new Chart(ctx, {
+  type: 'pie',
+  data: {
+    labels: {{ expense_categories|tojson }},
+    datasets: [{
+      data: {{ expense_amounts|tojson }},
+      backgroundColor: [
+        '#f472b6','#818cf8','#34d399','#fdba74','#facc15','#60a5fa','#a78bfa','#c084fc'
+      ]
+    }]
+  },
+  options: {
+    plugins: {
+      legend: { position: 'bottom' }
+    }
+  }
+});
+</script>
+{% endblock %}

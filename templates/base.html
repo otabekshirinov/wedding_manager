@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}💒 Свадебный Помощник{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Tailwind CDN + Inter font -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap" rel="stylesheet">
+    <style>
+        html { font-family: 'Inter', sans-serif; }
+        .wedding-gradient {
+            background: linear-gradient(120deg, #f8fafc 0%, #fff1f7 50%, #e0c3fc 100%);
+        }
+        .wedding-title-glow {
+            text-shadow: 0 2px 16px #f9a8d4bb, 0 1px 0 #fff;
+        }
+        .glass {
+            background: rgba(255,255,255,0.80);
+            box-shadow: 0 6px 32px 0 #fbcfe855;
+            backdrop-filter: blur(16px);
+            border-radius: 18px;
+        }
+        .wedding-card {
+            background: #fff;
+            border: 1.5px solid #fbcfe8;
+            border-radius: 18px;
+            box-shadow: 0 4px 16px 0 #d946ef0a;
+            transition: box-shadow 0.2s, border 0.2s;
+        }
+        .wedding-card:hover {
+            box-shadow: 0 8px 28px 0 #e879f930;
+            border-color: #f472b6;
+        }
+        @media (max-width: 640px) {
+            .hero-title { font-size: 2rem !important; }
+        }
+    </style>
+</head>
+<body class="wedding-gradient min-h-screen text-gray-800">
+    <!-- Navbar -->
+    <nav class="flex justify-between items-center px-2 sm:px-8 py-3 bg-white/70 shadow-md sticky top-0 z-30 backdrop-blur-lg">
+        <div class="flex items-center gap-2">
+            <span class="text-2xl sm:text-3xl">🏰</span>
+            <!-- Название — теперь это ссылка! -->
+            <a href="{{ url_for('index') }}"
+               class="font-black text-lg sm:text-2xl tracking-tight select-none hover:text-pink-600 transition"
+               style="letter-spacing: 0.03em; text-decoration: none;">
+                Свадебный Помощник
+            </a>
+        </div>
+        <!-- Desktop Menu -->
+        <div class="hidden sm:flex gap-6 items-center">
+            <a href="{{ url_for('index') }}" class="font-semibold hover:text-pink-500 transition">Свадьбы</a>
+     <a href="{{ url_for('svodnaya_bp.svodnaya') }}" class="font-semibold hover:text-indigo-600 transition">Сводная</a>
+        </div>
+        <!-- Mobile Menu Button -->
+        <button class="sm:hidden p-2 rounded-lg bg-gray-200/70" onclick="document.getElementById('mobile-menu').classList.toggle('hidden')" aria-label="Меню">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+        </button>
+        <!-- Mobile Dropdown -->
+        <div id="mobile-menu" class="hidden sm:hidden absolute left-0 top-16 w-full bg-white shadow-xl z-40 py-3 transition">
+            <a href="{{ url_for('index') }}" class="block px-6 py-2 font-semibold hover:text-pink-500 transition">Свадьбы</a>
+            <a href="{{ url_for('svodnaya_bp.svodnaya') }}" class="font-semibold hover:text-indigo-600 transition">Сводная</a>
+
+        </div>
+    </nav>
+
+    {% if show_hero is not defined or show_hero %}
+    <header class="flex flex-col items-center justify-center pt-6 sm:pt-10 pb-4 sm:pb-6 text-center">
+        <h1 class="hero-title text-3xl sm:text-5xl font-black tracking-tight mb-2 wedding-title-glow"
+            style="letter-spacing:0.02em;">
+            Всё для вашей <span class="text-pink-500">идеальной свадьбы</span>
+        </h1>
+        <div class="mt-2 text-base sm:text-xl text-gray-700 max-w-2xl">
+            Удобное приложение для учёта гостей, расходов и всех свадебных забот.<br>
+            <span class="font-semibold text-pink-600/90">Организуй праздник своей мечты легко!</span>
+        </div>
+    </header>
+    {% endif %}
+
+    <main class="max-w-5xl mx-auto px-2 sm:px-4 py-4 sm:py-8">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="mt-8 text-center text-gray-500 text-xs py-4 select-none">
+        &copy; {{ 2025 }} Свадебный Помощник — ok.shirinov <span class="text-pink-400">💖</span>
+    </footer>
+</body>
+</html>

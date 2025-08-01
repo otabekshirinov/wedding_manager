@@ -1,0 +1,322 @@
+{% extends 'base.html' %}
+{% block title %}{{ wedding.name }}{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('index') }}" class="flex items-center gap-1 text-pink-600 hover:text-pink-800 font-semibold mb-6 transition">
+  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+  Назад к списку
+</a>
+
+<div class="flex items-center gap-3 mb-1">
+  <span class="text-3xl">💍</span>
+  <h2 class="text-2xl font-extrabold tracking-tight">{{ wedding.name }}</h2>
+</div>
+{% if wedding.date %}
+  <div class="flex items-center gap-2 mb-4 text-pink-700 dark:text-pink-200">
+    <svg class="w-5 h-5 text-pink-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3M16 7V3M3 11h18M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+    </svg>
+    <span class="font-semibold">{{ wedding.date.strftime('%d.%m.%Y') }}</span>
+  </div>
+{% endif %}
+
+<div 
+  x-data="weddingDetail('{{ request.args.get('tab', 'expenses') }}')" 
+  class="my-8"
+  x-init="focusTabFromURL();"
+>
+  <!-- Tabs -->
+  <div class="flex border-b mb-6 bg-white/70 rounded-t-2xl shadow relative overflow-x-auto">
+    <button 
+      @click="switchTab('expenses')" 
+      :class="tab=='expenses' ? 'border-pink-500 text-pink-700 bg-white shadow-md scale-105' : 'border-transparent text-gray-500 bg-transparent scale-100'"
+      class="px-6 py-3 font-bold border-b-4 focus:outline-none transition rounded-t-2xl flex items-center gap-2"
+    >
+      <span>💸</span> <span>Расходы</span>
+    </button>
+    <button 
+      @click="switchTab('guests')" 
+      :class="tab=='guests' ? 'border-pink-500 text-pink-700 bg-white shadow-md scale-105' : 'border-transparent text-gray-500 bg-transparent scale-100'"
+      class="ml-2 px-6 py-3 font-bold border-b-4 focus:outline-none transition rounded-t-2xl flex items-center gap-2"
+    >
+      <span>🧑‍🤝‍🧑</span> <span>Гости</span>
+    </button>
+    <div class="absolute right-6 top-2 opacity-10 text-5xl pointer-events-none select-none hidden sm:block">🎉</div>
+  </div>
+
+  <!-- Expenses tab -->
+  <div x-show="tab=='expenses'" x-transition>
+    <div class="bg-white/90 backdrop-blur-2xl rounded-b-2xl shadow-lg p-6 mb-6">
+      <form method="POST" action="{{ url_for('add_expense', wedding_id=wedding.id) }}?tab=expenses" class="grid md:grid-cols-6 gap-4 mb-6">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🔖</span>
+          <input name="category" class="border p-2 rounded-xl w-full" placeholder="Категория (напр. Салаты)" required>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🍽️</span>
+          <input name="item" class="border p-2 rounded-xl w-full" placeholder="Наименование (напр. Мастава)" required>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xl">#️⃣</span>
+          <input name="quantity" type="number" step="0.01" class="border p-2 rounded-xl w-full" placeholder="Кол-во">
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xl">💵</span>
+          <input name="unit_price" type="number" step="0.01" class="border p-2 rounded-xl w-full" placeholder="Цена за ед.">
+        </div>
+        <div class="flex items-center gap-2 col-span-2 md:col-span-1">
+          <span class="text-xl">📝</span>
+          <input name="notes" class="border p-2 rounded-xl w-full" placeholder="Примечания">
+        </div>
+        <div>
+          <button type="submit" class="bg-green-500 hover:bg-green-700 text-white font-bold px-5 py-2 rounded-xl shadow flex items-center gap-2 transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+            Добавить
+          </button>
+        </div>
+      </form>
+      <div class="overflow-x-auto rounded-xl border">
+        <table class="min-w-full rounded-lg overflow-hidden text-sm">
+          <thead>
+            <tr class="bg-pink-50">
+              <th class="p-2 font-bold">Категория</th>
+              <th class="p-2 font-bold">Наименование</th>
+              <th class="p-2 font-bold text-right">Кол-во</th>
+              <th class="p-2 font-bold text-right">Цена</th>
+              <th class="p-2 font-bold text-right">Итого</th>
+              <th class="p-2 font-bold">Примечание</th>
+              <th class="p-2 font-bold text-center">Действия</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for e in wedding.expenses %}
+            <tr class="bg-white hover:bg-pink-50/80 transition">
+              <td class="p-2">{{ e.category }}</td>
+              <td class="p-2">{{ e.item }}</td>
+              <td class="p-2 text-right">{{ e.quantity or '' }}</td>
+              <td class="p-2 text-right">{{ e.unit_price or '' }}</td>
+              <td class="p-2 text-right font-semibold">{{ e.total or '' }}</td>
+              <td class="p-2">{{ e.notes }}</td>
+              <td class="p-2 flex gap-2 justify-center">
+                <button @click="openExpenseEdit({{e.id}}, '{{e.category|escape}}', '{{e.item|escape}}', '{{e.quantity or ''}}', '{{e.unit_price or ''}}', '{{e.notes|default('', true)|escape}}')" class="text-blue-600 hover:text-blue-900 transition" title="Редактировать">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536M9 11l6-6m2 2l-2-2m-7 7v6a2 2 0 002 2h6a2 2 0 002-2v-6"/>
+                  </svg>
+                </button>
+                <form method="POST" action="{{ url_for('delete_expense', expense_id=e.id) }}?tab=expenses" onsubmit="return confirm('Удалить расход?');">
+                  <button type="submit" class="text-red-600 hover:text-red-900 transition" title="Удалить">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="text-right mt-4 font-bold text-lg">
+        <span class="text-pink-600">Итого: {{ wedding.expenses | sum(attribute='total') or 0 }} ₽</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Guests tab -->
+  <div x-show="tab=='guests'" x-transition>
+    <div class="bg-white/90 backdrop-blur-2xl rounded-b-2xl shadow-lg p-6 mb-6">
+      <form method="POST" action="{{ url_for('add_guest', wedding_id=wedding.id) }}?tab=guests" class="grid md:grid-cols-4 gap-4 mb-6">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">👤</span>
+          <input name="name" class="border p-2 rounded-xl w-full" placeholder="Имя" required>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xl">📱</span>
+          <input name="phone" class="border p-2 rounded-xl w-full" placeholder="Телефон">
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🏷️</span>
+          <select name="status" class="border p-2 rounded-xl w-full">
+            <option value="invited">Приглашён</option>
+            <option value="confirmed">Подтвердил</option>
+            <option value="declined">Отказался</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xl">📝</span>
+          <input name="notes" class="border p-2 rounded-xl w-full" placeholder="Примечания">
+        </div>
+        <div>
+          <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold px-5 py-2 rounded-xl shadow flex items-center gap-2 transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+            Добавить
+          </button>
+        </div>
+      </form>
+      <div class="overflow-x-auto rounded-xl border">
+<table class="min-w-full rounded-lg overflow-hidden text-sm">
+  <thead>
+    <tr class="bg-pink-50">
+      <th class="p-2 font-bold">Имя</th>
+      <th class="p-2 font-bold">Телефон</th>
+      <th class="p-2 font-bold">Статус</th>
+      <th class="p-2 font-bold">Примечание</th>
+      <th class="p-2 font-bold text-center">Приглашение</th>
+      <th class="p-2 font-bold text-center">Действия</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for g in wedding.guests %}
+    <tr class="bg-white hover:bg-pink-50/80 transition">
+      <td class="p-2">{{ g.name }}</td>
+      <td class="p-2">{{ g.phone }}</td>
+      <td class="p-2">
+        {% if g.status == 'confirmed' %}
+          <span class="inline-flex items-center gap-1 bg-green-200 text-green-800 px-2 py-0.5 rounded-xl font-semibold">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+            </svg>
+            Подтвердил
+          </span>
+        {% elif g.status == 'declined' %}
+          <span class="inline-flex items-center gap-1 bg-red-200 text-red-800 px-2 py-0.5 rounded-xl font-semibold">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+            Отказался
+          </span>
+        {% else %}
+          <span class="inline-flex items-center gap-1 bg-gray-200 text-gray-700 px-2 py-0.5 rounded-xl font-semibold">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2l4 -4" />
+            </svg>
+            Приглашён
+          </span>
+        {% endif %}
+      </td>
+      <td class="p-2">{{ g.notes }}</td>
+      <td class="p-2 text-center">
+        <a href="{{ url_for('invitations_bp.invitation_pdf', wedding_id=wedding.id, guest_id=g.id) }}"
+           class="inline-block bg-pink-100 hover:bg-pink-200 px-3 py-1 rounded-lg text-pink-700 text-sm shadow"
+           target="_blank"
+           title="Печать приглашения">
+           🎟️ PDF
+        </a>
+      </td>
+      <td class="p-2 flex gap-2 justify-center">
+        <!-- кнопки редактирования/удаления (оставь свои) -->
+        <button @click="openGuestEdit({{g.id}}, '{{g.name|escape}}', '{{g.phone|escape}}', '{{g.status}}', '{{g.notes|default('', true)|escape}}')" class="text-blue-600 hover:text-blue-900 transition" title="Редактировать">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536M9 11l6-6m2 2l-2-2m-7 7v6a2 2 0 002 2h6a2 2 0 002-2v-6"/>
+          </svg>
+        </button>
+        <form method="POST" action="{{ url_for('delete_guest', guest_id=g.id) }}?tab=guests" onsubmit="return confirm('Удалить гостя?');">
+          <button type="submit" class="text-red-600 hover:text-red-900 transition" title="Удалить">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+      </div>
+      <div class="mt-2 text-sm text-gray-500">Всего гостей: <span class="font-semibold">{{ wedding.guests|length }}</span></div>
+    </div>
+  </div>
+
+  <!-- Modal Edit Expense -->
+  <div x-show="expenseEditOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" style="display: none;">
+    <div class="bg-white rounded-2xl p-8 shadow-2xl w-full max-w-md border">
+      <form :action="`/expense/${editExpenseId}/edit?tab=expenses`" method="POST" class="space-y-4">
+        <h3 class="text-lg font-bold mb-2 flex items-center gap-2"><span>✏️</span> Редактировать расход</h3>
+        <input type="text" name="category" x-model="editExpenseCategory" class="w-full border p-2 rounded-xl" required>
+        <input type="text" name="item" x-model="editExpenseItem" class="w-full border p-2 rounded-xl" required>
+        <input type="number" step="0.01" name="quantity" x-model="editExpenseQuantity" class="w-full border p-2 rounded-xl" required>
+        <input type="number" step="0.01" name="unit_price" x-model="editExpenseUnitPrice" class="w-full border p-2 rounded-xl" required>
+        <input type="text" name="notes" x-model="editExpenseNotes" class="w-full border p-2 rounded-xl">
+        <div class="flex justify-end gap-2 mt-2">
+          <button type="button" @click="expenseEditOpen=false" class="px-4 py-2 rounded-xl bg-gray-300 hover:bg-gray-400">Отмена</button>
+          <button type="submit" class="px-4 py-2 rounded-xl bg-blue-600 text-white">Сохранить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <!-- Modal Edit Guest -->
+  <div x-show="guestEditOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" style="display: none;">
+    <div class="bg-white rounded-2xl p-8 shadow-2xl w-full max-w-md border">
+      <form :action="`/guest/${editGuestId}/edit?tab=guests`" method="POST" class="space-y-4">
+        <h3 class="text-lg font-bold mb-2 flex items-center gap-2"><span>✏️</span> Редактировать гостя</h3>
+        <input type="text" name="name" x-model="editGuestName" class="w-full border p-2 rounded-xl" required>
+        <input type="text" name="phone" x-model="editGuestPhone" class="w-full border p-2 rounded-xl">
+        <select name="status" x-model="editGuestStatus" class="w-full border p-2 rounded-xl">
+          <option value="invited">Приглашён</option>
+          <option value="confirmed">Подтвердил</option>
+          <option value="declined">Отказался</option>
+        </select>
+        <input type="text" name="notes" x-model="editGuestNotes" class="w-full border p-2 rounded-xl">
+        <div class="flex justify-end gap-2 mt-2">
+          <button type="button" @click="guestEditOpen=false" class="px-4 py-2 rounded-xl bg-gray-300 hover:bg-gray-400">Отмена</button>
+          <button type="submit" class="px-4 py-2 rounded-xl bg-blue-600 text-white">Сохранить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Alpine.js -->
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+<script>
+function weddingDetail(initialTab) {
+  return {
+    tab: initialTab || 'expenses',
+    switchTab(t) {
+      this.tab = t;
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', t);
+      window.history.replaceState({}, '', url);
+    },
+    focusTabFromURL() {
+      const params = new URLSearchParams(window.location.search);
+      this.tab = params.get('tab') || 'expenses';
+    },
+    // Expense edit modal
+    expenseEditOpen: false,
+    editExpenseId: null,
+    editExpenseCategory: '',
+    editExpenseItem: '',
+    editExpenseQuantity: '',
+    editExpenseUnitPrice: '',
+    editExpenseNotes: '',
+    openExpenseEdit(id, category, item, quantity, unit_price, notes) {
+      this.editExpenseId = id;
+      this.editExpenseCategory = category;
+      this.editExpenseItem = item;
+      this.editExpenseQuantity = quantity;
+      this.editExpenseUnitPrice = unit_price;
+      this.editExpenseNotes = notes;
+      this.expenseEditOpen = true;
+    },
+    // Guest edit modal
+    guestEditOpen: false,
+    editGuestId: null,
+    editGuestName: '',
+    editGuestPhone: '',
+    editGuestStatus: 'invited',
+    editGuestNotes: '',
+    openGuestEdit(id, name, phone, status, notes) {
+      this.editGuestId = id;
+      this.editGuestName = name;
+      this.editGuestPhone = phone;
+      this.editGuestStatus = status;
+      this.editGuestNotes = notes;
+      this.guestEditOpen = true;
+    }
+  }
+}
+</script>
+{% endblock %}
