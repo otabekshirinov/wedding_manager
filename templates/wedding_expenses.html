@@ -13,6 +13,13 @@
 
 <div x-data="expensePage('{{ url_for('wedding_pages.edit_expense', expense_id=0) }}')" x-init="init()">
 
+  {# ===== Безопасные агрегаты (None -> 0) ===== #}
+  {% set sum_plan   = wedding.expenses | map(attribute='plan')       | map('default', 0, true) | sum %}
+  {% set sum_fact   = wedding.expenses | map(attribute='fact')       | map('default', 0, true) | sum %}
+  {% set sum_prepay = wedding.expenses | map(attribute='prepayment') | map('default', 0, true) | sum %}
+  {% set sum_total  = wedding.expenses | map(attribute='total')      | map('default', 0, true) | sum %}
+  {% set delta_pf   = (sum_fact - sum_plan) %}
+
   <!-- KPI-пилюли -->
   <div class="grid md:grid-cols-4 gap-4 mb-6">
     <div class="glass p-4 rounded-2xl border">
@@ -22,19 +29,19 @@
     <div class="glass p-4 rounded-2xl border">
       <div class="text-gray-500 text-xs uppercase tracking-wide">План (сум)</div>
       <div class="mt-1 text-2xl font-black text-amber-700">
-        {{ (wedding.expenses | sum(attribute='plan')) or 0 | int }}
+        {{ sum_plan|int }}
       </div>
     </div>
     <div class="glass p-4 rounded-2xl border">
       <div class="text-gray-500 text-xs uppercase tracking-wide">Факт (сум)</div>
       <div class="mt-1 text-2xl font-black text-emerald-700">
-        {{ (wedding.expenses | sum(attribute='fact')) or 0 | int }}
+        {{ sum_fact|int }}
       </div>
     </div>
     <div class="glass p-4 rounded-2xl border">
       <div class="text-gray-500 text-xs uppercase tracking-wide">Предоплата (сум)</div>
       <div class="mt-1 text-2xl font-black text-sky-700">
-        {{ (wedding.expenses | sum(attribute='prepayment')) or 0 | int }}
+        {{ sum_prepay|int }}
       </div>
     </div>
   </div>
@@ -43,9 +50,7 @@
   <div class="grid md:grid-cols-2 gap-4 mb-6">
     <div class="glass p-4 rounded-2xl border">
       <div class="text-gray-500 text-xs uppercase tracking-wide">Разница (Факт − План)</div>
-      {% set _sum_plan = (wedding.expenses | sum(attribute='plan')) or 0 %}
-      {% set _sum_fact = (wedding.expenses | sum(attribute='fact')) or 0 %}
-      {% set _delta = (_sum_fact - _sum_plan) | int %}
+      {% set _delta = delta_pf|int %}
       <div class="mt-1 text-2xl font-black {% if _delta>0 %}text-rose-600{% elif _delta<0 %}text-emerald-700{% else %}text-gray-800{% endif %}">
         {{ _delta }}
       </div>
@@ -53,7 +58,7 @@
     <div class="glass p-4 rounded-2xl border">
       <div class="text-gray-500 text-xs uppercase tracking-wide">Итого из позиций (qty × price)</div>
       <div class="mt-1 text-2xl font-black text-indigo-700">
-        {{ (wedding.expenses | sum(attribute='total')) or 0 | int }}
+        {{ sum_total|int }}
       </div>
     </div>
   </div>
@@ -206,11 +211,11 @@
           <tr>
             <td colspan="11" class="px-3 py-3">
               <div class="grid md:grid-cols-4 gap-3 text-sm">
-                <div class="text-right font-semibold">Сумма план: {{ (wedding.expenses | sum(attribute='plan')) or 0 | int }}</div>
-                <div class="text-right font-semibold">Сумма факт: {{ (wedding.expenses | sum(attribute='fact')) or 0 | int }}</div>
-                <div class="text-right font-semibold">Сумма предоплат: {{ (wedding.expenses | sum(attribute='prepayment')) or 0 | int }}</div>
-                <div class="text-right font-bold {% if _delta>0 %}text-rose-600{% elif _delta<0 %}text-emerald-700{% else %}text-gray-800{% endif %}">
-                  Разница (Ф−П): {{ _delta }}
+                <div class="text-right font-semibold">Сумма план: {{ sum_plan|int }}</div>
+                <div class="text-right font-semibold">Сумма факт: {{ sum_fact|int }}</div>
+                <div class="text-right font-semibold">Сумма предоплат: {{ sum_prepay|int }}</div>
+                <div class="text-right font-bold {% if delta_pf>0 %}text-rose-600{% elif delta_pf<0 %}text-emerald-700{% else %}text-gray-800{% endif %}">
+                  Разница (Ф−П): {{ delta_pf|int }}
                 </div>
               </div>
             </td>

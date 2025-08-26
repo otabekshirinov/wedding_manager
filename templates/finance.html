@@ -14,18 +14,22 @@
   Финансы — <span class="text-pink-700">{{ wedding.name }}</span>
 </h2>
 
-{# ====== АГРЕГАТЫ ====== #}
-{% set plan_sum   = wedding.expenses | sum(attribute='plan')        or 0 %}
-{% set fact_sum   = wedding.expenses | sum(attribute='fact')        or 0 %}
-{% set prepay_sum = wedding.expenses | sum(attribute='prepayment')  or 0 %}
-{% set total_sum  = wedding.expenses | sum(attribute='total')       or 0 %}
+{# ====== БЕЗОПАСНЫЕ АГРЕГАТЫ (None -> 0) ====== #}
+{% set expenses = wedding.expenses or [] %}
+{% set sponsors_list = sponsors or [] %}
+
+{% set plan_sum   = expenses | map(attribute='plan')       | map('default', 0, true) | sum %}
+{% set fact_sum   = expenses | map(attribute='fact')       | map('default', 0, true) | sum %}
+{% set prepay_sum = expenses | map(attribute='prepayment') | map('default', 0, true) | sum %}
+{% set total_sum  = expenses | map(attribute='total')      | map('default', 0, true) | sum %}
+
 {# чем считать «потрачено»: если есть факт — берём его, иначе sum(total) #}
 {% set spent = fact_sum if fact_sum else total_sum %}
 {% set diff  = fact_sum - plan_sum %}
-{% set budget = wedding.budget or 0 %}
+{% set budget = (wedding.budget or 0) %}
 
 {# сумма подарков/спонсоров #}
-{% set sponsors_total = sponsors | sum(attribute='amount') or 0 %}
+{% set sponsors_total = sponsors_list | map(attribute='amount') | map('default', 0, true) | sum %}
 
 {# Эффективный бюджет = плановый бюджет + подарки #}
 {% set effective_budget = budget + sponsors_total %}
@@ -147,7 +151,7 @@
         </tr>
       </thead>
       <tbody>
-        {% for s in sponsors %}
+        {% for s in sponsors_list %}
         {% set glabel = (
             (s.guest.family_name ~ (' ' ~ s.guest.name if s.guest.name else ''))
             if s.guest and s.guest.family_name
@@ -155,7 +159,7 @@
         ) %}
         <tr class="bg-white hover:bg-pink-50/60 transition">
           <td class="p-2">{{ glabel }}</td>
-          <td class="p-2 text-right text-pink-700 font-semibold">+{{ s.amount|int }}</td>
+          <td class="p-2 text-right text-pink-700 font-semibold">+{{ (s.amount or 0)|int }}</td>
           <td class="p-2 text-gray-600">{{ s.notes }}</td>
           <td class="p-2 text-center">
             <form method="POST" action="{{ url_for('finance_bp.delete_sponsor', wedding_id=wedding.id, sponsor_id=s.id) }}" onsubmit="return confirm('Удалить запись?');">
