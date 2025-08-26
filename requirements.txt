@@ -18,3 +18,6 @@ Pillow>=10,<12
 
 # (опционально для prod запуска через Gunicorn на Linux)
 # gunicorn>=21,<22
+
+psycopg[binary]>=3.1,<4
+

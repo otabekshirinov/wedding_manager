@@ -8,7 +8,7 @@ from flask import Flask, render_template, request, redirect, url_for, abort
 from flask_migrate import Migrate
 from flask_login import LoginManager, login_required, current_user
 
-from models import db, Wedding, Expense, Guest, User
+from models import *
 
 # блюпринты
 from auth import auth_bp            # должен быть Blueprint('auth', __name__, url_prefix='/auth')
@@ -23,15 +23,35 @@ from wedding_pages import wedding_pages
 # ----------------------------
 # Инициализация приложения
 # ----------------------------
+# app.py (фрагмент)
+import os
+from flask import Flask
+from flask_migrate import Migrate
+from models import db
+
 app = Flask(__name__)
+
+# Твой DSN к Neon (оставил channel_binding=require как ты прислал)
+NEON_DSN = (
+    "postgresql+psycopg://neondb_owner:npg_wDNS5ig2ueLh"
+    "@ep-misty-hill-a2nbi7km-pooler.eu-central-1.aws.neon.tech/neondb"
+    "?sslmode=require&channel_binding=require"
+)
+
 app.config.update(
-    SQLALCHEMY_DATABASE_URI=os.getenv("DATABASE_URL", "sqlite:///wedding.db"),
+    SQLALCHEMY_DATABASE_URI=os.getenv("DATABASE_URL", NEON_DSN),
     SQLALCHEMY_TRACK_MODIFICATIONS=False,
     SECRET_KEY=os.getenv("SECRET_KEY", "change-me-secret"),
+    SQLALCHEMY_ENGINE_OPTIONS={
+        "pool_pre_ping": True,
+        "pool_size": 5,
+        "max_overflow": 10,
+    },
 )
 
 db.init_app(app)
 migrate = Migrate(app, db)
+
 
 # ----------------------------
 # Flask-Login
