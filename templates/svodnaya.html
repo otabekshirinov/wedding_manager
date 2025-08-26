@@ -2,27 +2,73 @@
 {% block title %}Сводная по свадьбам{% endblock %}
 
 {% block content %}
-<h2 class="text-2xl font-bold mb-4">Сводная по свадьбам</h2>
+<h2 class="text-2xl font-extrabold mb-6 flex items-center gap-2">
+  <span>📊</span> Сводная по свадьбам
+</h2>
+
+{# ——— Верхние карточки-итоги ——— #}
+<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+  <div class="bg-white rounded-2xl border border-pink-100 p-5 shadow">
+    <div class="text-gray-500 text-sm">Всего свадеб</div>
+    <div class="text-2xl font-black">{{ weddings|length }}</div>
+  </div>
+  <div class="bg-white rounded-2xl border border-emerald-100 p-5 shadow">
+    <div class="text-gray-500 text-sm">Сумма всех расходов</div>
+    <div class="text-2xl font-black text-emerald-700">
+      {{
+        ('{:,.0f}'.format((weddings | sum(attribute='total')) or 0)).replace(',', ' ')
+      }} сум
+    </div>
+  </div>
+  <div class="bg-white rounded-2xl border border-indigo-100 p-5 shadow">
+    <div class="text-gray-500 text-sm">Средний расход на свадьбу</div>
+    <div class="text-2xl font-black text-indigo-700">
+      {% set _cnt = weddings|length %}
+      {% set _sum = (weddings | sum(attribute='total')) or 0 %}
+      {{ ('{:,.0f}'.format((_sum // _cnt) if _cnt else 0)).replace(',', ' ') }} сум
+    </div>
+  </div>
+</div>
+
+{# ——— Таблица ——— #}
 <div class="overflow-x-auto">
-  <table class="min-w-full bg-white rounded-xl shadow">
-    <thead>
-      <tr class="bg-pink-100 text-left">
-        <th class="px-4 py-2">Название</th>
-        <th class="px-4 py-2">Дата</th>
-        <th class="px-4 py-2 text-right">Всего расходов (₽)</th>
+  <table class="min-w-full bg-white rounded-2xl border shadow text-sm">
+    <thead class="bg-pink-50">
+      <tr>
+        <th class="px-4 py-3 text-left font-bold">Название</th>
+        <th class="px-4 py-3 text-left font-bold">Дата</th>
+        <th class="px-4 py-3 text-right font-bold">Всего расходов</th>
       </tr>
     </thead>
     <tbody>
       {% for w in weddings %}
-      <tr class="border-t hover:bg-pink-50">
-        <td class="px-4 py-2 font-semibold">
-          <a href="{{ url_for('view_wedding', wedding_id=w.id) }}" class="text-indigo-700 hover:underline">{{ w.name }}</a>
+      <tr class="border-t hover:bg-pink-50/70 transition">
+        <td class="px-4 py-3 font-semibold">
+          <a href="{{ url_for('wedding_pages.view_wedding', wedding_id=w.id) }}"
+             class="text-pink-700 hover:text-pink-900 hover:underline">
+            {{ w.name }}
+          </a>
         </td>
-        <td class="px-4 py-2">{{ w.date.strftime('%d.%m.%Y') if w.date }}</td>
-        <td class="px-4 py-2 text-right font-bold">{{ '{:,.2f}'.format(w.total) }}</td>
+        <td class="px-4 py-3">
+          {% if w.date %}{{ w.date.strftime('%d.%m.%Y') }}{% else %}—{% endif %}
+        </td>
+        <td class="px-4 py-3 text-right font-bold">
+          {{ ('{:,.0f}'.format(w.total or 0)).replace(',', ' ') }} сум
+        </td>
       </tr>
       {% endfor %}
     </tbody>
+    <tfoot class="bg-pink-50/60">
+      <tr>
+        <td class="px-4 py-3 font-bold">Итого</td>
+        <td class="px-4 py-3"></td>
+        <td class="px-4 py-3 text-right font-black text-pink-700">
+          {{
+            ('{:,.0f}'.format((weddings | sum(attribute='total')) or 0)).replace(',', ' ')
+          }} сум
+        </td>
+      </tr>
+    </tfoot>
   </table>
 </div>
 {% endblock %}

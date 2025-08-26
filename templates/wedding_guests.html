@@ -1,0 +1,421 @@
+{% extends 'base.html' %}
+{% block title %}Гости — {{ wedding.name }}{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('wedding_pages.view_wedding', wedding_id=wedding.id) }}"
+   class="text-pink-600 hover:text-pink-800 font-semibold mb-6 inline-flex items-center gap-1">
+  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+  К обзору свадьбы
+</a>
+
+{# агрегаты: персон/семей/столов #}
+{% set ns = namespace(persons=0, families=0) %}
+{% for g in wedding.guests %}
+  {% if g.family_count %}
+    {% set ns.persons = ns.persons + g.family_count %}
+  {% else %}
+    {% set ns.persons = ns.persons + 1 %}
+  {% endif %}
+  {% if g.family_name %}{% set ns.families = ns.families + 1 %}{% endif %}
+{% endfor %}
+{% set total_persons = ns.persons %}
+{% set families_count = ns.families %}
+{% set table_size = 12 %}
+{% set tables_needed = (total_persons + table_size - 1) // table_size %}
+
+<div class="flex items-center justify-between gap-4 flex-wrap">
+  <h2 class="text-2xl font-extrabold mb-2 flex items-center gap-2">
+    <span>🧑‍🤝‍🧑</span> Гости — <span class="text-pink-700">{{ wedding.name }}</span>
+  </h2>
+
+  <div class="flex items-center gap-3">
+    <form method="POST" action="{{ url_for('wedding_pages.auto_seat', wedding_id=wedding.id) }}"
+          onsubmit="return confirm('Рассадить автоматически по 12 мест на стол?');">
+      <button type="submit"
+              class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow">
+        🪑 Авто-рассадка
+      </button>
+    </form>
+    
+<a href="{{ url_for('wedding_pages.seating_page', wedding_id=wedding.id) }}"
+   class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white shadow">
+  🪑 Рассадка
+</a>
+
+    <a href="{{ url_for('invitations_bp.invitations_zip', wedding_id=wedding.id) }}"
+       class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-pink-600 hover:bg-pink-700 text-white shadow">
+      📥 Все приглашения (ZIP)
+    </a>
+  </div>
+</div>
+
+<div x-data="guestPage('{{ url_for('wedding_pages.edit_guest', guest_id=0) }}')" class="mt-4">
+  <!-- карточки-итоги -->
+  <div class="grid md:grid-cols-4 gap-4 mb-6">
+    <div class="glass p-4 rounded-2xl border">
+      <div class="text-gray-500 text-sm">Записей</div>
+      <div class="text-2xl font-black">{{ wedding.guests|length }}</div>
+    </div>
+    <div class="glass p-4 rounded-2xl border">
+      <div class="text-gray-500 text-sm">Персон</div>
+      <div class="text-2xl font-black">{{ total_persons }}</div>
+    </div>
+    <div class="glass p-4 rounded-2xl border">
+      <div class="text-gray-500 text-sm">Столов (по {{ table_size }})</div>
+      <div class="text-2xl font-black">{{ tables_needed }}</div>
+    </div>
+    <div class="glass p-4 rounded-2xl border">
+      <div class="text-gray-500 text-sm">Семей</div>
+      <div class="text-2xl font-black">{{ families_count }}</div>
+    </div>
+  </div>
+
+  <!-- панель фильтров -->
+  <div class="bg-white/90 backdrop-blur rounded-2xl border p-4 shadow mb-4">
+    <div class="grid sm:grid-cols-5 gap-3 items-end">
+      <div>
+        <label class="text-xs text-gray-500 block mb-1">Поиск</label>
+        <input x-model="q" class="border px-3 py-2 rounded-xl w-full" placeholder="Имя/семья/телефон">
+      </div>
+      <div>
+        <label class="text-xs text-gray-500 block mb-1">Сторона</label>
+        <select x-model="filterSide" class="border px-3 py-2 rounded-xl w-full">
+          <option value="">Все</option>
+          <option value="groom">Со стороны жениха</option>
+          <option value="bride">Со стороны невесты</option>
+          <option value="other">Другая</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-xs text-gray-500 block mb-1">VIP</label>
+        <select x-model="filterVIP" class="border px-3 py-2 rounded-xl w-full">
+          <option value="">Все</option>
+          <option value="1">Только VIP</option>
+          <option value="0">Не VIP</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-xs text-gray-500 block mb-1">Дети</label>
+        <select x-model="filterKids" class="border px-3 py-2 rounded-xl w-full">
+          <option value="">Все</option>
+          <option value="1">Только дети</option>
+          <option value="0">Без детей</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-xs text-gray-500 block mb-1">Стол №</label>
+        <input x-model.number="filterTable" type="number" min="1" class="border px-3 py-2 rounded-xl w-full" placeholder="любое">
+      </div>
+    </div>
+  </div>
+
+  <!-- форма добавления -->
+  <div class="bg-white/90 backdrop-blur rounded-2xl border p-6 shadow mb-6">
+    <div class="mb-3 font-bold text-gray-700 flex items-center gap-2">
+      <span class="text-indigo-500">➕</span> Добавить гостя / семью
+    </div>
+    <p class="text-xs text-gray-500 mb-4">
+      Можно указать <b>только «Семью» и «Персон»</b> — поле «Имя гостя» необязательно.
+    </p>
+
+    <form method="POST" action="{{ url_for('wedding_pages.add_guest', wedding_id=wedding.id) }}"
+          class="grid md:grid-cols-12 gap-4">
+      <label class="md:col-span-3">
+        <span class="text-xs text-gray-500 block mb-1">Имя гостя (необязательно)</span>
+        <input name="name" class="border p-2 rounded-xl w-full" placeholder="Иван Иванов">
+      </label>
+
+      <label class="md:col-span-3">
+        <span class="text-xs text-gray-500 block mb-1">Семья (опц.)</span>
+        <input name="family_name" class="border p-2 rounded-xl w-full" placeholder="Шириновы">
+      </label>
+
+      <label class="md:col-span-2">
+        <span class="text-xs text-gray-500 block mb-1">Персон</span>
+        <input name="family_count" type="number" min="1" class="border p-2 rounded-xl w-full" placeholder="1">
+      </label>
+
+      <label class="md:col-span-2">
+        <span class="text-xs text-gray-500 block mb-1">Телефон</span>
+        <input name="phone" class="border p-2 rounded-xl w-full" placeholder="+998...">
+      </label>
+
+      <label class="md:col-span-2">
+        <span class="text-xs text-gray-500 block mb-1">Стол № (опц.)</span>
+        <input name="table_no" type="number" min="1" class="border p-2 rounded-xl w-full" placeholder="—">
+      </label>
+
+      <label class="md:col-span-3">
+        <span class="text-xs text-gray-500 block mb-1">Сторона</span>
+        <select name="side" class="border p-2 rounded-xl w-full">
+          <option value="">—</option>
+          <option value="groom">Со стороны жениха</option>
+          <option value="bride">Со стороны невесты</option>
+          <option value="other">Другая</option>
+        </select>
+      </label>
+
+      <label class="md:col-span-2 flex items-center gap-2">
+        <input type="checkbox" name="is_vip" value="1" class="rounded">
+        <span class="text-sm">VIP</span>
+      </label>
+
+      <label class="md:col-span-2 flex items-center gap-2">
+        <input type="checkbox" name="is_child" value="1" class="rounded">
+        <span class="text-sm">Ребёнок</span>
+      </label>
+
+      <label class="md:col-span-3">
+        <span class="text-xs text-gray-500 block mb-1">Статус</span>
+        <select name="status" class="border p-2 rounded-xl w-full">
+          <option value="invited">Приглашён</option>
+          <option value="confirmed">Подтвердил</option>
+          <option value="declined">Отказался</option>
+        </select>
+      </label>
+
+      <label class="md:col-span-12">
+        <span class="text-xs text-gray-500 block mb-1">Примечание</span>
+        <input name="notes" class="border p-2 rounded-xl w-full" placeholder="Комментарий">
+      </label>
+
+      <div class="md:col-span-12">
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded-xl shadow">
+          Добавить
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- таблица -->
+  <div class="bg-white rounded-2xl border p-4 shadow">
+    <div class="overflow-x-auto rounded-xl border">
+      <table class="min-w-full rounded-lg overflow-hidden text-sm">
+        <thead>
+          <tr class="bg-pink-50">
+            <th class="p-2 font-bold">Имя</th>
+            <th class="p-2 font-bold">Семья</th>
+            <th class="p-2 font-bold text-right">Персон</th>
+            <th class="p-2 font-bold">Сторона</th>
+            <th class="p-2 font-bold">Теги</th>
+            <th class="p-2 font-bold">Телефон</th>
+            <th class="p-2 font-bold">Статус</th>
+            <th class="p-2 font-bold text-center">Приглашение</th>
+            <th class="p-2 font-bold text-center">Стол №</th>
+            <th class="p-2 font-bold text-center">Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for g in wedding.guests %}
+          {% set persons = g.family_count if g.family_count else 1 %}
+          <tr class="bg-white hover:bg-pink-50/70 transition"
+              x-show="rowVisible(
+                '{{ (g.side or '')|e }}',
+                {{ 1 if g.is_vip else 0 }},
+                {{ 1 if g.is_child else 0 }},
+                '{{ ((g.name or '') ~ ' ' ~ (g.family_name or '') ~ ' ' ~ (g.phone or ''))|trim|e }}',
+                {{ g.table_no or 0 }}
+              )">
+            <td class="p-2">{{ g.name or '—' }}</td>
+            <td class="p-2">
+              {% if g.family_name %}
+                <span class="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-lg border border-indigo-100">
+                  👨‍👩‍👧 {{ g.family_name }}
+                </span>
+              {% else %} — {% endif %}
+            </td>
+            <td class="p-2 text-right">{{ persons }}</td>
+            <td class="p-2">
+              {% if g.side == 'groom' %}<span class="px-2 py-0.5 rounded-xl bg-blue-50 text-blue-700 text-xs">Жених</span>{% endif %}
+              {% if g.side == 'bride' %}<span class="px-2 py-0.5 rounded-xl bg-pink-50 text-pink-700 text-xs">Невеста</span>{% endif %}
+              {% if g.side == 'other' %}<span class="px-2 py-0.5 rounded-xl bg-gray-100 text-gray-700 text-xs">Другая</span>{% endif %}
+              {% if not g.side %}—{% endif %}
+            </td>
+            <td class="p-2">
+              <div class="flex flex-wrap gap-1">
+                {% if g.is_vip %}<span class="px-2 py-0.5 rounded-xl bg-amber-100 text-amber-800 text-xs">VIP</span>{% endif %}
+                {% if g.is_child %}<span class="px-2 py-0.5 rounded-xl bg-emerald-100 text-emerald-800 text-xs">Дети</span>{% endif %}
+                {% if not g.is_vip and not g.is_child %}—{% endif %}
+              </div>
+            </td>
+            <td class="p-2">{{ g.phone or '—' }}</td>
+            <td class="p-2">
+              {% if g.status == 'confirmed' %}
+                <span class="inline-flex items-center gap-1 bg-green-200 text-green-800 px-2 py-0.5 rounded-xl font-semibold">✓ Подтвердил</span>
+              {% elif g.status == 'declined' %}
+                <span class="inline-flex items-center gap-1 bg-red-200 text-red-800 px-2 py-0.5 rounded-xl font-semibold">✕ Отказался</span>
+              {% else %}
+                <span class="inline-flex items-center gap-1 bg-gray-200 text-gray-700 px-2 py-0.5 rounded-xl font-semibold">● Приглашён</span>
+              {% endif %}
+            </td>
+            <td class="p-2 text-center">
+              <a href="{{ url_for('invitations_bp.invitation_pdf', wedding_id=wedding.id, guest_id=g.id) }}"
+                 class="inline-block bg-pink-100 hover:bg-pink-200 px-3 py-1 rounded-lg text-pink-700 text-sm shadow"
+                 target="_blank">🎟️ PDF</a>
+            </td>
+            <td class="p-2">
+              <form method="POST" action="{{ url_for('wedding_pages.set_table', guest_id=g.id) }}" class="flex items-center justify-center gap-1">
+                <input type="number" min="1" name="table_no" value="{{ g.table_no or '' }}"
+                       class="w-16 border rounded-xl px-2 py-1 text-right">
+                <button class="text-blue-600 hover:text-blue-800" title="Сохранить">💾</button>
+              </form>
+            </td>
+            <td class="p-2">
+              <div class="flex gap-2 justify-center">
+                <button
+                  @click="openEdit({{ g.id }},
+                                    '{{ g.name|default('', true)|escape }}',
+                                    '{{ g.phone|default('', true)|escape }}',
+                                    '{{ g.status }}',
+                                    '{{ g.notes|default('', true)|escape }}',
+                                    '{{ g.family_name|default('', true)|escape }}',
+                                    '{{ g.family_count or 1 }}',
+                                    '{{ g.side or '' }}',
+                                    {{ 1 if g.is_vip else 0 }},
+                                    {{ 1 if g.is_child else 0 }},
+                                    {{ g.table_no or 0 }})"
+                  class="px-2 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-100"
+                  title="Редактировать">✏️</button>
+
+                <form method="POST" action="{{ url_for('wedding_pages.delete_guest', guest_id=g.id) }}"
+                      onsubmit="return confirm('Удалить запись?');" class="inline">
+                  <button type="submit" class="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-100" title="Удалить">🗑️</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- итоги -->
+    <div class="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-700">
+      <div>Записей: <span class="font-semibold">{{ wedding.guests|length }}</span></div>
+      <div>Персон: <span class="font-semibold">{{ total_persons }}</span></div>
+      <div>Столов (по {{ table_size }}): <span class="font-semibold">{{ tables_needed }}</span></div>
+    </div>
+  </div>
+
+  <!-- модалка редактирования -->
+  <div x-show="editOpen" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50" style="display:none;">
+    <div class="bg-white rounded-2xl p-6 shadow-xl w-full max-w-2xl">
+      <h3 class="text-lg font-bold mb-4">Редактировать гостя / семью</h3>
+      <form :action="editActionUrl" method="POST" class="grid md:grid-cols-12 gap-3">
+        <label class="md:col-span-4">
+          <span class="text-xs text-gray-500 block mb-1">Имя гостя (может быть пустым)</span>
+          <input type="text" name="name" x-model="editName" class="border p-2 rounded-xl w-full">
+        </label>
+        <label class="md:col-span-4">
+          <span class="text-xs text-gray-500 block mb-1">Семья</span>
+          <input type="text" name="family_name" x-model="editFamilyName" class="border p-2 rounded-xl w-full">
+        </label>
+        <label class="md:col-span-2">
+          <span class="text-xs text-gray-500 block mb-1">Персон</span>
+          <input type="number" min="1" name="family_count" x-model="editFamilyCount" class="border p-2 rounded-xl w-full">
+        </label>
+        <label class="md:col-span-2">
+          <span class="text-xs text-gray-500 block mb-1">Стол №</span>
+          <input type="number" min="1" name="table_no" x-model="editTableNo" class="border p-2 rounded-xl w-full">
+        </label>
+
+        <label class="md:col-span-4">
+          <span class="text-xs text-gray-500 block mb-1">Сторона</span>
+          <select name="side" x-model="editSide" class="border p-2 rounded-xl w-full">
+            <option value="">—</option>
+            <option value="groom">Со стороны жениха</option>
+            <option value="bride">Со стороны невесты</option>
+            <option value="other">Другая</option>
+          </select>
+        </label>
+        <label class="md:col-span-2 flex items-center gap-2">
+          <input type="checkbox" name="is_vip" :checked="editVIP" @change="editVIP=$event.target.checked" class="rounded">
+          <span class="text-sm">VIP</span>
+        </label>
+        <label class="md:col-span-2 flex items-center gap-2">
+          <input type="checkbox" name="is_child" :checked="editChild" @change="editChild=$event.target.checked" class="rounded">
+          <span class="text-sm">Ребёнок</span>
+        </label>
+
+        <label class="md:col-span-4">
+          <span class="text-xs text-gray-500 block mb-1">Телефон</span>
+          <input type="text" name="phone" x-model="editPhone" class="border p-2 rounded-xl w-full">
+        </label>
+        <label class="md:col-span-4">
+          <span class="text-xs text-gray-500 block mb-1">Статус</span>
+          <select name="status" x-model="editStatus" class="border p-2 rounded-xl w-full">
+            <option value="invited">Приглашён</option>
+            <option value="confirmed">Подтвердил</option>
+            <option value="declined">Отказался</option>
+          </select>
+        </label>
+        <label class="md:col-span-12">
+          <span class="text-xs text-gray-500 block mb-1">Примечание</span>
+          <input type="text" name="notes" x-model="editNotes" class="border p-2 rounded-xl w-full">
+        </label>
+
+        <div class="md:col-span-12 flex justify-end gap-2">
+          <button type="button" @click="editOpen=false" class="px-4 py-2 bg-gray-200 rounded-xl">Отмена</button>
+          <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-xl">Сохранить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Alpine -->
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+<script>
+function guestPage(editUrlTemplate) {
+  return {
+    // фильтры
+    q: '',
+    filterSide: '',
+    filterVIP: '',
+    filterKids: '',
+    filterTable: null,
+
+    // редактирование
+    editOpen: false,
+    editId: null,
+    editName: '', editPhone: '', editStatus: 'invited', editNotes: '',
+    editFamilyName: '', editFamilyCount: 1,
+    editSide: '', editVIP: false, editChild: false, editTableNo: null,
+
+    get editActionUrl() {
+      if (this.editId === null) return editUrlTemplate;
+      return editUrlTemplate.replace(/\/0(\/|$)/, `/${this.editId}$1`);
+    },
+    openEdit(id, name, phone, status, notes, familyName, familyCount, side, vip, child, tableNo) {
+      this.editId = id;
+      this.editName = name || '';
+      this.editPhone = phone || '';
+      this.editStatus = status || 'invited';
+      this.editNotes = notes || '';
+      this.editFamilyName = familyName || '';
+      this.editFamilyCount = parseInt(familyCount || 1, 10);
+      this.editSide = side || '';
+      this.editVIP = !!vip;
+      this.editChild = !!child;
+      this.editTableNo = tableNo || null;
+      this.editOpen = true;
+    },
+
+    rowVisible(side, vip, kid, text, tableNo) {
+      if (this.filterSide && side !== this.filterSide) return false;
+      if (this.filterVIP !== '') {
+        if (this.filterVIP === '1' && !vip) return false;
+        if (this.filterVIP === '0' && vip) return false;
+      }
+      if (this.filterKids !== '') {
+        if (this.filterKids === '1' && !kid) return false;
+        if (this.filterKids === '0' && kid) return false;
+      }
+      if (this.filterTable && parseInt(this.filterTable) !== (parseInt(tableNo) || 0)) return false;
+      if (this.q && !String(text).toLowerCase().includes(this.q.toLowerCase())) return false;
+      return true;
+    }
+  }
+}
+</script>
+{% endblock %}

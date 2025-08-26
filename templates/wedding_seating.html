@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+{% block title %}Рассадка — {{ wedding.name }}{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('wedding_pages.wedding_guests', wedding_id=wedding.id) }}"
+   class="text-pink-600 hover:text-pink-800 font-semibold mb-6 inline-flex items-center gap-1">
+  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+  К гостям
+</a>
+
+<div class="flex items-center justify-between gap-3 flex-wrap mb-4">
+  <h2 class="text-2xl font-extrabold flex items-center gap-2">🪑 Рассадка — <span class="text-pink-700">{{ wedding.name }}</span></h2>
+  <div class="flex items-center gap-2">
+    <form method="POST" action="{{ url_for('wedding_pages.seating_auto', wedding_id=wedding.id) }}">
+      <button class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow">Раcкидать автоматически</button>
+    </form>
+    <form method="POST" action="{{ url_for('wedding_pages.seating_clear', wedding_id=wedding.id) }}">
+      <button class="px-4 py-2 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100">Очистить</button>
+    </form>
+    <form method="POST" action="{{ url_for('wedding_pages.seating_new_table', wedding_id=wedding.id) }}">
+      <input type="hidden" name="seats" value="{{ seats_per_table }}">
+      <button class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow">Добавить стол</button>
+    </form>
+  </div>
+</div>
+
+<!-- агрегаты -->
+<div class="grid sm:grid-cols-4 gap-4 mb-6">
+  <div class="glass p-4 rounded-2xl border"><div class="text-gray-500 text-sm">Всего персон</div><div class="text-2xl font-black">{{ total_persons }}</div></div>
+  <div class="glass p-4 rounded-2xl border"><div class="text-gray-500 text-sm">Мест за столом</div><div class="text-2xl font-black">{{ seats_per_table }}</div></div>
+  <div class="glass p-4 rounded-2xl border"><div class="text-gray-500 text-sm">Нужно столов (min)</div><div class="text-2xl font-black">{{ tables_needed }}</div></div>
+  <div class="glass p-4 rounded-2xl border"><div class="text-gray-500 text-sm">Столов сейчас</div><div class="text-2xl font-black">{{ tables|length }}</div></div>
+</div>
+
+<div class="grid lg:grid-cols-4 gap-6" x-data>
+  <!-- НЕРАСПРЕДЕЛЁННЫЕ -->
+  <div class="lg:col-span-1">
+    <div class="bg-white rounded-2xl border p-4 shadow">
+      <div class="flex items-center justify-between">
+        <div class="font-bold">Нераспределённые</div>
+        <div class="text-xs text-gray-500"><span id="uns-count"></span> перс.</div>
+      </div>
+      <div id="list-uns" class="min-h-[200px] mt-3 rounded-xl border border-dashed p-2">
+        {% for g in unassigned %}
+          <div class="guest-card cursor-move select-none px-3 py-2 mb-2 rounded-xl bg-gray-50 border"
+               data-id="{{ g.id }}"
+               data-persons="{{ g.family_count or 1 }}">
+            <div class="font-semibold text-sm">{{ g.family_name or g.name or 'Без имени' }}</div>
+            <div class="text-xs text-gray-500">
+              {% if g.family_name %}👨‍👩‍👧 {{ g.family_count or 1 }} перс.{% else %}👤 1 перс.{% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- СТОЛЫ -->
+  <div class="lg:col-span-3 grid md:grid-cols-2 xl:grid-cols-3 gap-6">
+    {% for t in tables %}
+      {# Посчитаем людей за столом через namespace, используя уже переданный список tables_guests[t.id] #}
+      {% set ns = namespace(pers=0) %}
+      {% for gg in tables_guests[t.id] %}
+        {% set ns.pers = ns.pers + (gg.family_count or 1) %}
+      {% endfor %}
+      {% set sum_persons = ns.pers %}
+
+      <div class="bg-white rounded-2xl border p-4 shadow">
+        <div class="flex items-center justify-between gap-2">
+          <form method="POST" action="{{ url_for('wedding_pages.seating_rename_table', wedding_id=wedding.id, table_id=t.id) }}" class="flex items-center gap-2">
+            <input name="name" value="{{ t.name }}" class="border rounded-lg px-2 py-1 text-sm">
+            <button class="text-xs px-2 py-1 rounded bg-gray-100 hover:bg-gray-200">Сохранить</button>
+          </form>
+          <div class="text-xs">
+            <span id="cap-{{ t.id }}" class="inline-block rounded-full px-2 py-0.5 border {% if sum_persons > t.seats %}border-rose-300 text-rose-700 bg-rose-50{% else %}border-emerald-300 text-emerald-700 bg-emerald-50{% endif %}">
+              {{ sum_persons }}/{{ t.seats }}
+            </span>
+          </div>
+        </div>
+
+        <div id="list-{{ t.id }}" class="min-h-[220px] mt-3 rounded-xl border border-dashed p-2" data-table-id="{{ t.id }}" data-seats="{{ t.seats }}">
+          {% for g in tables_guests[t.id] %}
+            <div class="guest-card cursor-move select-none px-3 py-2 mb-2 rounded-xl bg-pink-50 border"
+                 data-id="{{ g.id }}"
+                 data-persons="{{ g.family_count or 1 }}">
+              <div class="font-semibold text-sm">{{ g.family_name or g.name or 'Без имени' }}</div>
+              <div class="text-xs text-gray-500">
+                {% if g.family_name %}👨‍👩‍👧 {{ g.family_count or 1 }} перс.{% else %}👤 1 перс.{% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+
+        <div class="mt-2 text-right">
+          <form method="POST" action="{{ url_for('wedding_pages.seating_delete_table', wedding_id=wedding.id, table_id=t.id) }}"
+                onsubmit="return confirm('Удалить стол? Гости вернутся в список нераспределённых.');">
+            <button class="text-rose-600 hover:text-rose-800 text-sm">Удалить стол</button>
+          </form>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- SortableJS -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script>
+(function() {
+  function sumPersons(container) {
+    let s = 0;
+    container.querySelectorAll('.guest-card').forEach(el => {
+      s += parseInt(el.dataset.persons || "1", 10);
+    });
+    return s;
+  }
+  function updateCap(tableId) {
+    if (!tableId) {
+      // uns list
+      const uns = document.getElementById('list-uns');
+      const s = sumPersons(uns);
+      document.getElementById('uns-count').textContent = s;
+      return;
+    }
+    const list = document.getElementById('list-'+tableId);
+    const seats = parseInt(list.dataset.seats, 10);
+    const s = sumPersons(list);
+    const badge = document.getElementById('cap-'+tableId);
+    if (badge) {
+      badge.textContent = `${s}/${seats}`;
+      badge.className = 'inline-block rounded-full px-2 py-0.5 border ' + (s>seats ? 'border-rose-300 text-rose-700 bg-rose-50' : 'border-emerald-300 text-emerald-700 bg-emerald-50');
+    }
+  }
+  function saveAssign(guestId, tableId) {
+    fetch("{{ url_for('wedding_pages.seating_assign') }}", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({guest_id: guestId, table_id: tableId})
+    }).then(r=>r.json()).then(resp=>{
+      updateCap(null); // uns
+      (resp.updated || []).forEach(u => u && updateCap(u.table_id));
+    });
+  }
+
+  // init Sortable for UNS
+  const uns = document.getElementById('list-uns');
+  new Sortable(uns, {
+    group: 'guests',
+    animation: 150,
+    onAdd: function(evt) {
+      const guestId = evt.item.dataset.id;
+      saveAssign(guestId, null);
+      updateCap(null);
+    }
+  });
+  updateCap(null);
+
+  // init Sortable for tables
+  document.querySelectorAll('[id^="list-"][data-table-id]').forEach(el=>{
+    const tableId = el.dataset.tableId;
+    const seats = parseInt(el.dataset.seats, 10);
+    new Sortable(el, {
+      group: 'guests',
+      animation: 150,
+      onAdd: function(evt) {
+        const item = evt.item;
+        const persons = parseInt(item.dataset.persons || "1", 10);
+        const cur = sumPersons(el);
+        if (cur > seats) {
+          // переполнен — откатываем
+          evt.from.appendChild(item);
+          alert('Нет свободных мест за этим столом');
+          return;
+        }
+        const guestId = item.dataset.id;
+        saveAssign(guestId, tableId);
+        updateCap(tableId);
+      },
+      onUpdate: function() {
+        updateCap(tableId);
+      }
+    });
+    updateCap(tableId);
+  });
+})();
+</script>
+{% endblock %}

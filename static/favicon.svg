@@ -1,0 +1,27 @@
+<!-- static/favicon.svg -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fde68a"></stop>
+      <stop offset="1" stop-color="#f59e0b"></stop>
+    </linearGradient>
+    <linearGradient id="heart" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f472b6"></stop>
+      <stop offset="1" stop-color="#a78bfa"></stop>
+    </linearGradient>
+  </defs>
+
+  <!-- тень для читаемости на любом фоне -->
+  <circle cx="24" cy="36" r="18" fill="none" stroke="rgba(0,0,0,.08)" stroke-width="8"></circle>
+  <circle cx="40" cy="28" r="18" fill="none" stroke="rgba(0,0,0,.08)" stroke-width="8"></circle>
+
+  <!-- золотые колечки -->
+  <circle cx="24" cy="36" r="16" fill="none" stroke="url(#ring)" stroke-width="6"></circle>
+  <circle cx="40" cy="28" r="16" fill="none" stroke="url(#ring)" stroke-width="6"></circle>
+
+  <!-- лёгкий блик -->
+  <circle cx="40" cy="28" r="13" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="2"></circle>
+
+  <!-- сердечко -->
+  <path d="M32 22c-3-4.5-10-2.5-10 3.5 0 6.2 10 11.5 10 11.5s10-5.3 10-11.5C42 19.5 35 17.5 32 22z" fill="url(#heart)" stroke="#fff" stroke-width="2" stroke-linejoin="round"></path>
+</svg>

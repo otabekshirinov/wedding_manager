@@ -1,148 +1,148 @@
-from flask import Flask, render_template, request, redirect, url_for
+# app.py
+from __future__ import annotations
+
+import os
 from datetime import datetime
-from models import db, Wedding, Expense, Guest
+
+from flask import Flask, render_template, request, redirect, url_for, abort
+from flask_migrate import Migrate
+from flask_login import LoginManager, login_required, current_user
+
+from models import db, Wedding, Expense, Guest, User
+
+# блюпринты
+from auth import auth_bp            # должен быть Blueprint('auth', __name__, url_prefix='/auth')
+from admin import admin_bp          # например Blueprint('admin', __name__, url_prefix='/admin')
 from svodnaya import svodnaya_bp
 from tasks import tasks_bp
 from finance import finance_bp
-from flask_migrate import Migrate
 from invitations import invitations_bp
+from wedding_pages import wedding_pages
 
 
-
-
-
-
-
-
-
-
-
+# ----------------------------
+# Инициализация приложения
+# ----------------------------
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///wedding.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config.update(
+    SQLALCHEMY_DATABASE_URI=os.getenv("DATABASE_URL", "sqlite:///wedding.db"),
+    SQLALCHEMY_TRACK_MODIFICATIONS=False,
+    SECRET_KEY=os.getenv("SECRET_KEY", "change-me-secret"),
+)
+
 db.init_app(app)
 migrate = Migrate(app, db)
 
+# ----------------------------
+# Flask-Login
+# ----------------------------
+login_manager = LoginManager(app)
+# NB: endpoint из блюпринта auth → 'auth.login', НЕ 'auth_bp.login'
+login_manager.login_view = "auth.login"
+
+@login_manager.user_loader
+def load_user(uid: str):
+    try:
+        return User.query.get(int(uid))
+    except Exception:
+        return None
+
+
+# ----------------------------
+# Регистрация блюпринтов
+# ----------------------------
+# важно: сначала auth/admin, чтобы login_view/админ-страницы были доступны
+app.register_blueprint(auth_bp)
+app.register_blueprint(admin_bp)
 
 app.register_blueprint(svodnaya_bp)
 app.register_blueprint(tasks_bp)
 app.register_blueprint(finance_bp)
 app.register_blueprint(invitations_bp)
+app.register_blueprint(wedding_pages)
 
-@app.route('/')
+
+# ----------------------------
+# Хелперы и маршруты
+# ----------------------------
+def get_wedding_or_403(wedding_id: int) -> Wedding:
+    """Проверка доступа: админ видит всё, пользователь — только свои свадьбы."""
+    w = Wedding.query.get_or_404(wedding_id)
+    if not current_user.is_authenticated:
+        abort(401)
+    if not current_user.is_admin and w.user_id != current_user.id:
+        abort(403)
+    return w
+
+
+@app.route("/")
+@login_required
 def index():
-    weddings = Wedding.query.order_by(Wedding.date.desc()).all()
-    return render_template('index.html', weddings=weddings)
+    # админ — все свадьбы, пользователь — только свои
+    q = Wedding.query
+    if not current_user.is_admin:
+        q = q.filter_by(user_id=current_user.id)
+    # .nullslast() ок; для SQLite SQLAlchemy эмитит совместимый ORDER BY
+    weddings = q.order_by(Wedding.date.desc().nullslast()).all()
+    return render_template("index.html", weddings=weddings)
 
-@app.route('/wedding/create', methods=['POST'])
+
+@app.route("/wedding/create", methods=["POST"])
+@login_required
 def create_wedding():
-    name = request.form['name']
-    date = request.form['date']
-    wedding = Wedding(name=name, date=datetime.strptime(date, '%Y-%m-%d') if date else None)
+    name = request.form.get("name", "").strip()
+    date_raw = request.form.get("date") or ""
+    dt = None
+    if date_raw:
+        try:
+            dt = datetime.strptime(date_raw, "%Y-%m-%d")
+        except ValueError:
+            dt = None
+
+    wedding = Wedding(name=name, date=dt, user_id=current_user.id)
     db.session.add(wedding)
     db.session.commit()
-    return redirect(url_for('index'))
-
-@app.route('/wedding/<int:wedding_id>')
-def view_wedding(wedding_id):
-    wedding = Wedding.query.get_or_404(wedding_id)
-    return render_template('wedding_detail.html', wedding=wedding)
-
-@app.route('/wedding/<int:wedding_id>/add_expense', methods=['POST'])
-def add_expense(wedding_id):
-    # Получаем значения (или 0, если не указано)
-    quantity = request.form.get('quantity')
-    unit_price = request.form.get('unit_price')
-    try:
-        quantity = float(quantity) if quantity else 0
-    except ValueError:
-        quantity = 0
-    try:
-        unit_price = float(unit_price) if unit_price else 0
-    except ValueError:
-        unit_price = 0
-    total = quantity * unit_price if quantity and unit_price else unit_price or 0
-    expense = Expense(
-        category=request.form['category'],
-        item=request.form['item'],
-        quantity=quantity if quantity else None,
-        unit_price=unit_price if unit_price else None,
-        total=total,
-        notes=request.form.get('notes'),
-        wedding_id=wedding_id
-    )
-    db.session.add(expense)
-    db.session.commit()
-    return redirect(url_for('view_wedding', wedding_id=wedding_id))
+    return redirect(url_for("index"))
 
 
-@app.route('/wedding/<int:wedding_id>/add_guest', methods=['POST'])
-def add_guest(wedding_id):
-    guest = Guest(
-        name=request.form['name'],
-        phone=request.form.get('phone'),
-        status=request.form.get('status', 'invited'),
-        notes=request.form.get('notes'),
-        wedding_id=wedding_id
-    )
-    db.session.add(guest)
-    db.session.commit()
-    return redirect(url_for('view_wedding', wedding_id=wedding_id))
-
-# Удаление расхода
-@app.route('/expense/<int:expense_id>/delete', methods=['POST'])
-def delete_expense(expense_id):
-    expense = Expense.query.get_or_404(expense_id)
-    wedding_id = expense.wedding_id
-    db.session.delete(expense)
-    db.session.commit()
-    return redirect(url_for('view_wedding', wedding_id=wedding_id))
-
-# Удаление гостя
-@app.route('/guest/<int:guest_id>/delete', methods=['POST'])
-def delete_guest(guest_id):
-    guest = Guest.query.get_or_404(guest_id)
-    wedding_id = guest.wedding_id
-    db.session.delete(guest)
-    db.session.commit()
-    return redirect(url_for('view_wedding', wedding_id=wedding_id))
-
-# Редактирование расхода
-@app.route('/expense/<int:expense_id>/edit', methods=['POST'])
-def edit_expense(expense_id):
-    expense = Expense.query.get_or_404(expense_id)
-    expense.category = request.form['category']
-    expense.item = request.form['item']
-    quantity = request.form.get('quantity')
-    unit_price = request.form.get('unit_price')
-    try:
-        quantity = float(quantity) if quantity else 0
-    except ValueError:
-        quantity = 0
-    try:
-        unit_price = float(unit_price) if unit_price else 0
-    except ValueError:
-        unit_price = 0
-    expense.quantity = quantity if quantity else None
-    expense.unit_price = unit_price if unit_price else None
-    expense.total = quantity * unit_price if quantity and unit_price else unit_price or 0
-    expense.notes = request.form.get('notes')
-    db.session.commit()
-    return redirect(url_for('view_wedding', wedding_id=expense.wedding_id))
-
-# Редактирование гостя
-@app.route('/guest/<int:guest_id>/edit', methods=['POST'])
-def edit_guest(guest_id):
-    guest = Guest.query.get_or_404(guest_id)
-    guest.name = request.form['name']
-    guest.phone = request.form.get('phone')
-    guest.status = request.form.get('status')
-    guest.notes = request.form.get('notes')
-    db.session.commit()
-    return redirect(url_for('view_wedding', wedding_id=guest.wedding_id))
+@app.route("/wedding/<int:wedding_id>")
+@login_required
+def view_wedding(wedding_id: int):
+    wedding = get_wedding_or_403(wedding_id)
+    # если у тебя есть специальный шаблон-хаб, оставь его
+    # иначе временно используем overview
+    return render_template("wedding_overview.html", wedding=wedding)
 
 
+# ----------------------------
+# Инициализация БД и сид-админа
+# ----------------------------
+def ensure_db_and_seed_admin():
+    """Создаёт таблицы и пользователя-админа, если ещё нет."""
+    db.create_all()  # создаст отсутствующие таблицы; существующие не тронет
+
+    admin_email = os.getenv("ADMIN_EMAIL", "admin@weddings.local")
+    admin_pass  = os.getenv("ADMIN_PASSWORD", "admin123")
+
+    u = User.query.filter_by(email=admin_email).first()
+    if not u:
+        u = User(email=admin_email, name="Админ", is_admin=True)
+        u.set_password(admin_pass)
+        db.session.add(u)
+        db.session.commit()
+        print(f"[init] Создан админ: {admin_email} / {admin_pass}")
+    else:
+        # на всякий случай можно обновить пароль, если надо
+        # u.set_password(admin_pass); db.session.commit()
+        pass
+
+
+# ----------------------------
+# Точка входа
+# ----------------------------
 if __name__ == "__main__":
     with app.app_context():
-        db.create_all()
-    app.run(host="0.0.0.0", port=80, debug=True)
+        ensure_db_and_seed_admin()
+
+    # порт по умолчанию 5000, debug по желанию
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", "5000")), debug=True)

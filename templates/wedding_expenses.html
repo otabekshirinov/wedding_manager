@@ -1,0 +1,305 @@
+{% extends 'base.html' %}
+{% block title %}Расходы — {{ wedding.name }}{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('wedding_pages.view_wedding', wedding_id=wedding.id) }}" class="text-pink-600 hover:text-pink-800 font-semibold mb-6 inline-flex items-center gap-1">
+  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+  К обзору свадьбы
+</a>
+
+<h2 class="text-2xl font-extrabold mb-4 flex items-center gap-2">
+  <span>💸</span> Расходы — <span class="text-pink-700">{{ wedding.name }}</span>
+</h2>
+
+<div x-data="expensePage('{{ url_for('wedding_pages.edit_expense', expense_id=0) }}')" x-init="init()">
+
+  <!-- KPI-пилюли -->
+  <div class="grid md:grid-cols-4 gap-4 mb-6">
+    <div class="glass p-4 rounded-2xl border">
+      <div class="text-gray-500 text-xs uppercase tracking-wide">Позиции</div>
+      <div class="mt-1 text-2xl font-black">{{ wedding.expenses|length }}</div>
+    </div>
+    <div class="glass p-4 rounded-2xl border">
+      <div class="text-gray-500 text-xs uppercase tracking-wide">План (сум)</div>
+      <div class="mt-1 text-2xl font-black text-amber-700">
+        {{ (wedding.expenses | sum(attribute='plan')) or 0 | int }}
+      </div>
+    </div>
+    <div class="glass p-4 rounded-2xl border">
+      <div class="text-gray-500 text-xs uppercase tracking-wide">Факт (сум)</div>
+      <div class="mt-1 text-2xl font-black text-emerald-700">
+        {{ (wedding.expenses | sum(attribute='fact')) or 0 | int }}
+      </div>
+    </div>
+    <div class="glass p-4 rounded-2xl border">
+      <div class="text-gray-500 text-xs uppercase tracking-wide">Предоплата (сум)</div>
+      <div class="mt-1 text-2xl font-black text-sky-700">
+        {{ (wedding.expenses | sum(attribute='prepayment')) or 0 | int }}
+      </div>
+    </div>
+  </div>
+
+  <!-- Вторая полоса KPI -->
+  <div class="grid md:grid-cols-2 gap-4 mb-6">
+    <div class="glass p-4 rounded-2xl border">
+      <div class="text-gray-500 text-xs uppercase tracking-wide">Разница (Факт − План)</div>
+      {% set _sum_plan = (wedding.expenses | sum(attribute='plan')) or 0 %}
+      {% set _sum_fact = (wedding.expenses | sum(attribute='fact')) or 0 %}
+      {% set _delta = (_sum_fact - _sum_plan) | int %}
+      <div class="mt-1 text-2xl font-black {% if _delta>0 %}text-rose-600{% elif _delta<0 %}text-emerald-700{% else %}text-gray-800{% endif %}">
+        {{ _delta }}
+      </div>
+    </div>
+    <div class="glass p-4 rounded-2xl border">
+      <div class="text-gray-500 text-xs uppercase tracking-wide">Итого из позиций (qty × price)</div>
+      <div class="mt-1 text-2xl font-black text-indigo-700">
+        {{ (wedding.expenses | sum(attribute='total')) or 0 | int }}
+      </div>
+    </div>
+  </div>
+
+  <!-- Форма добавления -->
+  <div class="bg-white/90 backdrop-blur rounded-2xl border p-6 shadow mb-8">
+    <div class="mb-3 font-bold text-gray-700 flex items-center gap-2">
+      <span class="text-pink-500">➕</span> Добавить позицию
+    </div>
+    <form method="POST" action="{{ url_for('wedding_pages.add_expense', wedding_id=wedding.id) }}" class="grid md:grid-cols-12 gap-4">
+      <!-- Категория -->
+      <label class="md:col-span-3">
+        <span class="text-xs text-gray-500 block mb-1">Категория</span>
+        <div class="relative">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2">🔖</span>
+          <input name="category" required class="pl-9 border p-2 rounded-xl w-full focus:ring-2 focus:ring-pink-200" placeholder="Салаты">
+        </div>
+      </label>
+      <!-- Наименование -->
+      <label class="md:col-span-3">
+        <span class="text-xs text-gray-500 block mb-1">Наименование</span>
+        <div class="relative">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2">🍽️</span>
+          <input name="item" required class="pl-9 border p-2 rounded-xl w-full focus:ring-2 focus:ring-pink-200" placeholder="Мастава">
+        </div>
+      </label>
+      <!-- Кол-во -->
+      <label class="md:col-span-2">
+        <span class="text-xs text-gray-500 block mb-1">Кол-во</span>
+        <div class="relative">
+          <input name="quantity" type="number" step="0.01" class="pr-10 border p-2 rounded-xl w-full focus:ring-2 focus:ring-pink-200" placeholder="0">
+          <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">шт</span>
+        </div>
+      </label>
+      <!-- Цена -->
+      <label class="md:col-span-2">
+        <span class="text-xs text-gray-500 block mb-1">Цена за ед.</span>
+        <div class="relative">
+          <input name="unit_price" type="number" step="0.01" class="pr-12 border p-2 rounded-xl w-full focus:ring-2 focus:ring-pink-200" placeholder="0">
+          <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">сум</span>
+        </div>
+      </label>
+      <!-- План -->
+      <label class="md:col-span-2">
+        <span class="text-xs text-gray-500 block mb-1">План</span>
+        <div class="relative">
+          <input name="plan" type="number" step="0.01" class="pr-12 border p-2 rounded-xl w-full focus:ring-2 focus:ring-pink-200" placeholder="0">
+          <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">сум</span>
+        </div>
+      </label>
+      <!-- Факт -->
+      <label class="md:col-span-2">
+        <span class="text-xs text-gray-500 block mb-1">Факт</span>
+        <div class="relative">
+          <input name="fact" type="number" step="0.01" class="pr-12 border p-2 rounded-xl w-full focus:ring-2 focus:ring-pink-200" placeholder="0">
+          <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">сум</span>
+        </div>
+      </label>
+      <!-- Предоплата -->
+      <label class="md:col-span-2">
+        <span class="text-xs text-gray-500 block mb-1">Предоплата</span>
+        <div class="relative">
+          <input name="prepayment" type="number" step="0.01" class="pr-12 border p-2 rounded-xl w-full focus:ring-2 focus:ring-pink-200" placeholder="0">
+          <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">сум</span>
+        </div>
+      </label>
+      <!-- Примечания -->
+      <label class="md:col-span-12">
+        <span class="text-xs text-gray-500 block mb-1">Примечание</span>
+        <textarea name="notes" rows="2" class="border p-3 rounded-xl w-full focus:ring-2 focus:ring-pink-200" placeholder="Комментарий к позиции"></textarea>
+      </label>
+      <div class="md:col-span-12">
+        <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-2 rounded-xl shadow">
+          Добавить позицию
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Таблица -->
+  <div class="bg-white rounded-2xl border shadow overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead class="bg-pink-50/70 sticky top-0 z-10">
+          <tr class="text-gray-700">
+            <th class="px-3 py-2 font-semibold text-left">Категория</th>
+            <th class="px-3 py-2 font-semibold text-left">Наименование</th>
+            <th class="px-3 py-2 font-semibold text-right">Кол-во</th>
+            <th class="px-3 py-2 font-semibold text-right">Цена</th>
+            <th class="px-3 py-2 font-semibold text-right">Итого</th>
+            <th class="px-3 py-2 font-semibold text-right">План</th>
+            <th class="px-3 py-2 font-semibold text-right">Факт</th>
+            <th class="px-3 py-2 font-semibold text-right">Предоплата</th>
+            <th class="px-3 py-2 font-semibold text-right">Разница</th>
+            <th class="px-3 py-2 font-semibold text-left">Примечание</th>
+            <th class="px-3 py-2 font-semibold text-center">Действия</th>
+          </tr>
+        </thead>
+        <tbody class="[&_tr:nth-child(even)]:bg-gray-50/40">
+          {% for e in wedding.expenses %}
+          {% set plan = e.plan or 0 %}
+          {% set fact = e.fact or 0 %}
+          {% set diff = (fact - plan) | int %}
+          <tr class="hover:bg-pink-50/60 transition">
+            <td class="px-3 py-2 whitespace-nowrap">
+              <span class="inline-flex items-center gap-1 rounded-lg bg-pink-50 px-2 py-0.5 text-pink-700 border border-pink-100">{{ e.category }}</span>
+            </td>
+            <td class="px-3 py-2">{{ e.item }}</td>
+            <td class="px-3 py-2 text-right">{{ e.quantity or '' }}</td>
+            <td class="px-3 py-2 text-right">{{ e.unit_price or '' }}</td>
+            <td class="px-3 py-2 text-right font-semibold">{{ e.total or '' }}</td>
+            <td class="px-3 py-2 text-right">{{ e.plan or '' }}</td>
+            <td class="px-3 py-2 text-right">{{ e.fact or '' }}</td>
+            <td class="px-3 py-2 text-right">{{ e.prepayment or '' }}</td>
+            <td class="px-3 py-2 text-right">
+              <span class="inline-flex items-center px-2 py-0.5 rounded-lg border text-xs font-semibold
+                {% if diff>0 %} border-rose-200 bg-rose-50 text-rose-700
+                {% elif diff<0 %} border-emerald-200 bg-emerald-50 text-emerald-700
+                {% else %} border-gray-200 bg-gray-50 text-gray-700 {% endif %}">
+                {{ diff if (e.fact is not none or e.plan is not none) else '' }}
+              </span>
+            </td>
+            <td class="px-3 py-2">{{ e.notes }}</td>
+            <td class="px-3 py-2">
+              <div class="flex items-center justify-center gap-2">
+                <button
+                  @click="openEdit({{ e.id }},
+                                    '{{ e.category|escape }}',
+                                    '{{ e.item|escape }}',
+                                    '{{ e.quantity or '' }}',
+                                    '{{ e.unit_price or '' }}',
+                                    '{{ e.notes|default('', true)|escape }}',
+                                    '{{ e.plan or '' }}',
+                                    '{{ e.fact or '' }}',
+                                    '{{ e.prepayment or '' }}')"
+                  class="px-2 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-100"
+                  title="Редактировать">
+                  ✏️
+                </button>
+                <form method="POST" action="{{ url_for('wedding_pages.delete_expense', expense_id=e.id) }}" onsubmit="return confirm('Удалить расход?');" class="inline">
+                  <button type="submit" class="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-100" title="Удалить">🗑️</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <!-- Итоги -->
+        <tfoot class="bg-white">
+          <tr>
+            <td colspan="11" class="px-3 py-3">
+              <div class="grid md:grid-cols-4 gap-3 text-sm">
+                <div class="text-right font-semibold">Сумма план: {{ (wedding.expenses | sum(attribute='plan')) or 0 | int }}</div>
+                <div class="text-right font-semibold">Сумма факт: {{ (wedding.expenses | sum(attribute='fact')) or 0 | int }}</div>
+                <div class="text-right font-semibold">Сумма предоплат: {{ (wedding.expenses | sum(attribute='prepayment')) or 0 | int }}</div>
+                <div class="text-right font-bold {% if _delta>0 %}text-rose-600{% elif _delta<0 %}text-emerald-700{% else %}text-gray-800{% endif %}">
+                  Разница (Ф−П): {{ _delta }}
+                </div>
+              </div>
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- Модалка редактирования -->
+  <div x-show="editOpen" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50" style="display: none;">
+    <div class="bg-white rounded-2xl p-6 shadow-xl w-full max-w-2xl">
+      <h3 class="text-lg font-bold mb-4">Редактировать позицию</h3>
+      <form :action="editActionUrl" method="POST" class="grid md:grid-cols-12 gap-3">
+        <label class="md:col-span-4">
+          <span class="text-xs text-gray-500 block mb-1">Категория</span>
+          <input type="text" name="category" x-model="editCategory" class="border p-2 rounded-xl w-full" required>
+        </label>
+        <label class="md:col-span-8">
+          <span class="text-xs text-gray-500 block mb-1">Наименование</span>
+          <input type="text" name="item" x-model="editItem" class="border p-2 rounded-xl w-full" required>
+        </label>
+        <label class="md:col-span-3">
+          <span class="text-xs text-gray-500 block mb-1">Кол-во</span>
+          <input type="number" step="0.01" name="quantity" x-model="editQuantity" class="border p-2 rounded-xl w-full">
+        </label>
+        <label class="md:col-span-3">
+          <span class="text-xs text-gray-500 block mb-1">Цена за ед.</span>
+          <input type="number" step="0.01" name="unit_price" x-model="editUnitPrice" class="border p-2 rounded-xl w-full">
+        </label>
+        <label class="md:col-span-2">
+          <span class="text-xs text-gray-500 block mb-1">План</span>
+          <input type="number" step="0.01" name="plan" x-model="editPlan" class="border p-2 rounded-xl w-full">
+        </label>
+        <label class="md:col-span-2">
+          <span class="text-xs text-gray-500 block mb-1">Факт</span>
+          <input type="number" step="0.01" name="fact" x-model="editFact" class="border p-2 rounded-xl w-full">
+        </label>
+        <label class="md:col-span-2">
+          <span class="text-xs text-gray-500 block mb-1">Предоплата</span>
+          <input type="number" step="0.01" name="prepayment" x-model="editPrepayment" class="border p-2 rounded-xl w-full">
+        </label>
+        <label class="md:col-span-12">
+          <span class="text-xs text-gray-500 block mb-1">Примечание</span>
+          <input type="text" name="notes" x-model="editNotes" class="border p-2 rounded-xl w-full">
+        </label>
+        <div class="md:col-span-12 flex justify-end gap-2 pt-2">
+          <button type="button" @click="editOpen=false" class="px-4 py-2 bg-gray-200 rounded-xl">Отмена</button>
+          <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-xl">Сохранить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Alpine.js -->
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+<script>
+function expensePage(editUrlTemplate) {
+  return {
+    editOpen: false,
+    editId: null,
+    editCategory: '',
+    editItem: '',
+    editQuantity: '',
+    editUnitPrice: '',
+    editNotes: '',
+    editPlan: '',
+    editFact: '',
+    editPrepayment: '',
+    get editActionUrl() {
+      // editUrlTemplate выглядит как "/wedding/expenses/0/edit"
+      if (this.editId === null) return editUrlTemplate;
+      return editUrlTemplate.replace(/\/0(\/|$)/, `/${this.editId}$1`);
+    },
+    openEdit(id, category, item, quantity, unit_price, notes, plan, fact, prepayment) {
+      this.editId = id;
+      this.editCategory = category;
+      this.editItem = item;
+      this.editQuantity = quantity;
+      this.editUnitPrice = unit_price;
+      this.editNotes = notes;
+      this.editPlan = plan;
+      this.editFact = fact;
+      this.editPrepayment = prepayment;
+      this.editOpen = true;
+    },
+    init() {}
+  }
+}
+</script>
+{% endblock %}
