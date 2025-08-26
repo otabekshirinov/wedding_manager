@@ -1,6 +1,20 @@
-Flask
-Flask-SQLAlchemy
-Flask-Migrate
-qrcode
-Pillow        # зависимость для qrcode
-fpdf          # для генерации PDF-приглашений
+# Core
+Flask>=3.0,<4
+Flask-SQLAlchemy>=3.1,<4
+SQLAlchemy>=2.0,<3
+Flask-Login>=0.6.3,<0.7
+
+# Migrations
+Flask-Migrate>=4.0,<5
+alembic>=1.12,<2
+
+# Invitations (PDF + QR)
+fpdf2>=2.7,<3
+qrcode[pil]>=7.4,<8
+Pillow>=10,<12
+
+# (опционально, если хочешь конфиг через .env)
+# python-dotenv>=1.0,<2
+
+# (опционально для prod запуска через Gunicorn на Linux)
+# gunicorn>=21,<22
